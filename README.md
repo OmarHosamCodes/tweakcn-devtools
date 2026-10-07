@@ -19,7 +19,7 @@ npm install @tweakcn/devtools
 Until the package is on npm, install from Git:
 
 ```bash
-npm install github:schoolofmarketing/tweakcn-devtools
+npm install github:OmarHosamCodes/tweakcn-devtools
 ```
 
 Run `npm run build` in the cloned repo before linking locally.
@@ -91,7 +91,7 @@ See [API reference](docs/api-reference.md) for `TweakcnDevtoolsOptions`, theme h
 ## Try the playground
 
 ```bash
-git clone https://github.com/schoolofmarketing/tweakcn-devtools.git
+git clone https://github.com/OmarHosamCodes/tweakcn-devtools.git
 cd tweakcn-devtools
 bun install
 bun run dev
