@@ -165,14 +165,48 @@ export function clearEditorSite() {
   document.getElementById(FRAME_ID)?.remove();
 }
 
-function clipEditor(frame: HTMLIFrameElement, rect: DOMRect) {
+function rectPath(rect: DOMRect): string {
+  const x1 = Math.round(rect.left);
+  const y1 = Math.round(rect.top);
+  const x2 = Math.round(rect.right);
+  const y2 = Math.round(rect.bottom);
+  return `${x1}px ${y1}px, ${x2}px ${y1}px, ${x2}px ${y2}px, ${x1}px ${y2}px, ${x1}px ${y1}px`;
+}
+
+function intersection(a: DOMRect, b: DOMRect): DOMRect | null {
+  const left = Math.max(a.left, b.left);
+  const top = Math.max(a.top, b.top);
+  const right = Math.min(a.right, b.right);
+  const bottom = Math.min(a.bottom, b.bottom);
+  if (right - left < 1 || bottom - top < 1) return null;
+  return new DOMRect(left, top, right - left, bottom - top);
+}
+
+/** Menus and dialogs that overlap the preview must stay visible above the page. */
+function overlayRects(doc: Document, hole: DOMRect): DOMRect[] {
+  const nodes = [
+    ...doc.querySelectorAll<HTMLElement>(
+      '[data-radix-popper-content-wrapper], [role="dialog"][data-state="open"], [role="menu"][data-state="open"], [role="listbox"]',
+    ),
+  ];
+  const outer = nodes.filter((node) => !nodes.some((other) => other !== node && other.contains(node)));
+  const rects: DOMRect[] = [];
+  for (const node of outer) {
+    const overlap = intersection(hole, node.getBoundingClientRect());
+    if (overlap) rects.push(overlap);
+  }
+  return rects;
+}
+
+function clipEditor(frame: HTMLIFrameElement, hole: DOMRect, overlays: DOMRect[]) {
   const width = frame.clientWidth;
   const height = frame.clientHeight;
-  const x1 = Math.max(0, rect.left);
-  const y1 = Math.max(0, rect.top);
-  const x2 = Math.min(width, rect.right);
-  const y2 = Math.min(height, rect.bottom);
-  frame.style.clipPath = `polygon(evenodd, 0px 0px, ${width}px 0px, ${width}px ${height}px, 0px ${height}px, 0px 0px, ${x1}px ${y1}px, ${x2}px ${y1}px, ${x2}px ${y2}px, ${x1}px ${y2}px, ${x1}px ${y1}px)`;
+  const parts = [
+    `0px 0px, ${width}px 0px, ${width}px ${height}px, 0px ${height}px, 0px 0px`,
+    rectPath(hole),
+    ...overlays.map(rectPath),
+  ];
+  frame.style.clipPath = `polygon(evenodd, ${parts.join(", ")})`;
 }
 
 function syncFrame(frame: HTMLIFrameElement) {
@@ -183,7 +217,7 @@ function syncFrame(frame: HTMLIFrameElement) {
     const rect = visiblePane(frame, pane.getBoundingClientRect());
     if (rect) {
       placeSite(rect);
-      clipEditor(frame, rect);
+      clipEditor(frame, rect, overlayRects(doc, rect));
     }
   }
   const theme = findThemeElement(doc);
@@ -205,8 +239,9 @@ export function bindEditorSite(frame: HTMLIFrameElement): () => void {
     if (!doc) return;
     observer.observe(doc.documentElement, {
       attributes: true,
+      childList: true,
       subtree: true,
-      attributeFilter: ["style", "class"],
+      attributeFilter: ["style", "class", "data-state"],
     });
     schedule();
   };
