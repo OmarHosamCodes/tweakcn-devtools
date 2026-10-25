@@ -33,7 +33,8 @@ html.td-site-placed body {
   overflow: auto !important;
   border-radius: 12px !important;
   z-index: 2147483645 !important;
-  transform: translateZ(0);
+  /* No transform here. A transform would trap the editor iframe, which is a
+     fixed descendant of body, and shrink tweakcn into its narrow layout. */
 }
 
 html.td-site-placed body * {
