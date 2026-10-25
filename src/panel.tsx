@@ -7,6 +7,7 @@ import {
 } from "./apply-theme";
 import { getBundledCommunityThemes, getPredefinedThemes } from "./catalog";
 import { DEFAULT_COMMUNITY_PATH, fetchCommunityPage } from "./community";
+import { fetchAppPackageName, seedAppTheme } from "./app-theme";
 import { bindEditorSite, clearEditorSite } from "./editor-site";
 import { panelStyles } from "./panel-styles";
 import { TWEAKCN_EDITOR_PATH, TWEAKCN_PREVIEW_STORAGE_KEY } from "./preview-frame";
@@ -342,9 +343,15 @@ export function TweakcnDevtoolsPanel(options: TweakcnDevtoolsOptions) {
     } catch {
       // Storage can be blocked. The editor still opens.
     }
-    setEditorSrc(options.editorUrl ?? TWEAKCN_EDITOR_PATH);
-    setEditorEpoch((epoch) => epoch + 1);
-    setView("extended");
+    const open = () => {
+      setEditorSrc(options.editorUrl ?? TWEAKCN_EDITOR_PATH);
+      setEditorEpoch((epoch) => epoch + 1);
+      setView("extended");
+    };
+    void fetchAppPackageName().then((name) => {
+      if (name) seedAppTheme(name);
+      open();
+    });
   };
 
   useEffect(() => {

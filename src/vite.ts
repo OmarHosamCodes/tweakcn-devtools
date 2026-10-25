@@ -1,6 +1,9 @@
+import { readFileSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { resolve } from "node:path";
 import type { Plugin } from "vite";
-import { DEFAULT_COMMUNITY_PATH } from "./community";
+import { DEFAULT_COMMUNITY_PATH, TWEAKCN_APP_PATH } from "./community";
+import { injectEditorBoot, patchEditorBundle } from "./editor-patch";
 import { TWEAKCN_COMMUNITY_ACTION_ID, TWEAKCN_COMMUNITY_ORIGIN, parseTweakcnFlight } from "./flight";
 import { mapCommunityRow } from "./map-theme";
 
@@ -61,12 +64,15 @@ async function proxyEditor(req: IncomingMessage, res: ServerResponse) {
       lower === "connection" ||
       lower === "content-security-policy" ||
       lower === "x-frame-options" ||
-      lower === "set-cookie"
+      lower === "set-cookie" ||
+      lower === "cache-control" ||
+      lower === "expires"
     ) {
       return;
     }
     res.setHeader(key, value);
   });
+  res.setHeader("cache-control", "no-store");
   const cookies = typeof upstream.headers.getSetCookie === "function" ? upstream.headers.getSetCookie() : [];
   if (cookies.length > 0) {
     res.setHeader(
@@ -74,9 +80,34 @@ async function proxyEditor(req: IncomingMessage, res: ServerResponse) {
       cookies.map((cookie) => rewriteSetCookie(cookie)),
     );
   }
-  const payload = Buffer.from(await upstream.arrayBuffer());
+  const raw = Buffer.from(await upstream.arrayBuffer());
+  const payload = transformProxiedEditor(req.url ?? "/", upstream.headers.get("content-type") ?? "", raw);
   res.setHeader("content-length", payload.length);
   res.end(payload);
+}
+
+function transformProxiedEditor(url: string, contentType: string, payload: Buffer): Buffer {
+  const path = new URL(url, "http://localhost").pathname;
+  const type = contentType.toLowerCase();
+  if (type.includes("text/html") && (path === "/editor" || path.startsWith("/editor/"))) {
+    return Buffer.from(injectEditorBoot(payload.toString("utf8")));
+  }
+  if (type.includes("javascript") || path.endsWith(".js")) {
+    const source = payload.toString("utf8");
+    const patched = patchEditorBundle(source);
+    if (patched !== source) return Buffer.from(patched);
+  }
+  return payload;
+}
+
+function readPackageName(root: string): string {
+  try {
+    const pkg = JSON.parse(readFileSync(resolve(root, "package.json"), "utf8")) as { name?: unknown };
+    if (typeof pkg.name === "string" && pkg.name.trim()) return pkg.name.trim();
+  } catch {
+    // The dev server still runs when package.json cannot be read.
+  }
+  return "app";
 }
 
 export interface TweakcnDevtoolsViteOptions {
@@ -97,8 +128,16 @@ export function tweakcnDevtools(options: TweakcnDevtoolsViteOptions = {}): Plugi
   return {
     name: "tweakcn-devtools",
     configureServer(server) {
+      const packageName = readPackageName(server.config.root);
       server.middlewares.use(async (req, res, next) => {
         const url = req.url ?? "";
+        const path = new URL(url, "http://localhost").pathname;
+        if (path === TWEAKCN_APP_PATH && (req.method === "GET" || req.method === "HEAD")) {
+          res.statusCode = 200;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify({ name: packageName }));
+          return;
+        }
         if (shouldProxyEditor(url, headerValue(req.headers.referer))) {
           try {
             await proxyEditor(req, res);
