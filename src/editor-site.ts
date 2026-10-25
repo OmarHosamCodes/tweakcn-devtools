@@ -209,9 +209,51 @@ function clipEditor(frame: HTMLIFrameElement, hole: DOMRect, overlays: DOMRect[]
   frame.style.clipPath = `polygon(evenodd, ${parts.join(", ")})`;
 }
 
+const SOCIAL_HREFS = ["github.com/jnsahaj/tweakcn", "discord.gg/", "x.com/iamsahaj"];
+const HEADER_LABELS = new Set(["Sign In", "Sign Up", "Get Pro"]);
+
+function labelOf(element: Element): string {
+  return (element.textContent ?? "").replace(/\s+/g, " ").trim();
+}
+
+function isSocialLink(anchor: HTMLAnchorElement): boolean {
+  const href = anchor.getAttribute("href") ?? "";
+  return SOCIAL_HREFS.some((part) => href.includes(part));
+}
+
+/** Drop tweakcn's account wall and the social links in the editor header. */
+function stripEditorChrome(doc: Document) {
+  const groups = new Set<HTMLElement>();
+  for (const anchor of doc.querySelectorAll("a")) {
+    if (!isSocialLink(anchor)) continue;
+    if (anchor.parentElement) groups.add(anchor.parentElement);
+    anchor.remove();
+  }
+  for (const group of groups) {
+    const next = group.nextElementSibling;
+    if (group.childElementCount === 0) group.remove();
+    if (next?.getAttribute("data-orientation")) next.remove();
+  }
+
+  for (const button of doc.querySelectorAll("button")) {
+    if (HEADER_LABELS.has(labelOf(button))) button.remove();
+  }
+
+  for (const dialog of doc.querySelectorAll('[role="dialog"]')) {
+    const text = labelOf(dialog);
+    if (!/sign in|create account|welcome back|get pro|upgrade to pro/i.test(text)) continue;
+    const close = [...dialog.querySelectorAll("button")].find((button) =>
+      /close/i.test(`${labelOf(button)} ${button.getAttribute("aria-label") ?? ""}`),
+    );
+    if (close) close.click();
+    else dialog.remove();
+  }
+}
+
 function syncFrame(frame: HTMLIFrameElement) {
   const doc = frame.contentDocument;
   if (!doc) return;
+  stripEditorChrome(doc);
   const pane = findPreviewPane(doc);
   if (pane) {
     const rect = visiblePane(frame, pane.getBoundingClientRect());
