@@ -31,6 +31,13 @@ Unmounts and removes the host element from the document.
 | `communityUrl` | `string` | `"/__tweakcn/community"` | POST endpoint that returns `{ themes, nextCursor }` JSON |
 | `disableCommunity` | `boolean` | `false` | Hides the Community tab; presets and bundled snapshot only |
 | `zIndex` | `number` | `2147483646` | Stacking order of the dock host |
+| `editorUrl` | `string` | `"/editor/theme?p=custom"` | Document loaded for the full editor. Override with `https://tweakcn.com/editor/theme?p=custom` when the Vite plugin is not installed |
+
+### Extended view
+
+**Extend** shows the tweakcn editor and fits the current page into the editor's preview section. That section is the page you already have open. It is not an address loaded in an iframe. **Dock** removes that fit and returns to the bottom sheet. Escape closes the panel.
+
+The Vite plugin proxies `/editor`, `/_next`, and editor API requests to tweakcn so the editor keeps its own UI and runs on your dev origin. Theme values from the editor are copied onto the page.
 
 ### Types
 
@@ -40,7 +47,7 @@ Unmounts and removes the host element from the document.
 
 ### `tweakcnDevtools(options?)`
 
-Vite plugin (dev server only). Registers middleware on `communityPath` that forwards to tweakcn and returns parsed JSON.
+Vite plugin (dev server only). Registers middleware on `communityPath` that forwards to tweakcn and returns parsed JSON. It also proxies the tweakcn editor document, its `/_next` assets, and API calls whose referrer is `/editor`, so **Extend** can show the real editor.
 
 ### `TweakcnDevtoolsViteOptions`
 

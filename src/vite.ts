@@ -1,7 +1,83 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Plugin } from "vite";
+import { DEFAULT_COMMUNITY_PATH } from "./community";
 import { TWEAKCN_COMMUNITY_ACTION_ID, TWEAKCN_COMMUNITY_ORIGIN, parseTweakcnFlight } from "./flight";
 import { mapCommunityRow } from "./map-theme";
-import { DEFAULT_COMMUNITY_PATH } from "./community";
+
+const TWEAKCN_ORIGIN = "https://tweakcn.com";
+
+function headerValue(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) return value[0];
+  return value;
+}
+
+function refererIsEditor(referer: string | undefined): boolean {
+  if (!referer) return false;
+  try {
+    const path = new URL(referer).pathname;
+    return path === "/editor" || path.startsWith("/editor/");
+  } catch {
+    return false;
+  }
+}
+
+export function shouldProxyEditor(url: string, referer: string | undefined): boolean {
+  const parsed = new URL(url, "http://localhost");
+  const path = parsed.pathname;
+  if (path === "/_next" || path.startsWith("/_next/")) return true;
+  if (path === "/editor" || path.startsWith("/editor/")) return true;
+  if (path.startsWith("/api/auth")) return true;
+  return refererIsEditor(referer) && (path.startsWith("/api/") || parsed.searchParams.has("_rsc"));
+}
+
+function rewriteSetCookie(cookie: string): string {
+  return cookie
+    .split(";")
+    .filter((part) => !/^\s*domain=/i.test(part))
+    .join(";");
+}
+
+async function proxyEditor(req: IncomingMessage, res: ServerResponse) {
+  const target = new URL(req.url ?? "/", TWEAKCN_ORIGIN);
+  const headers = new Headers();
+  for (const [key, value] of Object.entries(req.headers)) {
+    if (value == null) continue;
+    const lower = key.toLowerCase();
+    if (lower === "host" || lower === "connection" || lower === "content-length" || lower === "accept-encoding") {
+      continue;
+    }
+    headers.set(key, Array.isArray(value) ? value.join(", ") : value);
+  }
+  const method = req.method ?? "GET";
+  const body = method === "GET" || method === "HEAD" ? undefined : new Uint8Array(await readBody(req));
+  const upstream = await fetch(target, { method, headers, body, redirect: "follow" });
+  res.statusCode = upstream.status;
+  upstream.headers.forEach((value, key) => {
+    const lower = key.toLowerCase();
+    if (
+      lower === "content-encoding" ||
+      lower === "content-length" ||
+      lower === "transfer-encoding" ||
+      lower === "connection" ||
+      lower === "content-security-policy" ||
+      lower === "x-frame-options" ||
+      lower === "set-cookie"
+    ) {
+      return;
+    }
+    res.setHeader(key, value);
+  });
+  const cookies = typeof upstream.headers.getSetCookie === "function" ? upstream.headers.getSetCookie() : [];
+  if (cookies.length > 0) {
+    res.setHeader(
+      "set-cookie",
+      cookies.map((cookie) => rewriteSetCookie(cookie)),
+    );
+  }
+  const payload = Buffer.from(await upstream.arrayBuffer());
+  res.setHeader("content-length", payload.length);
+  res.end(payload);
+}
 
 export interface TweakcnDevtoolsViteOptions {
   communityPath?: string;
@@ -22,7 +98,18 @@ export function tweakcnDevtools(options: TweakcnDevtoolsViteOptions = {}): Plugi
     name: "tweakcn-devtools",
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith(communityPath)) {
+        const url = req.url ?? "";
+        if (shouldProxyEditor(url, headerValue(req.headers.referer))) {
+          try {
+            await proxyEditor(req, res);
+          } catch (error) {
+            res.statusCode = 502;
+            res.setHeader("Content-Type", "text/plain; charset=utf-8");
+            res.end(error instanceof Error ? error.message : "Editor proxy failed");
+          }
+          return;
+        }
+        if (!url.startsWith(communityPath)) {
           next();
           return;
         }

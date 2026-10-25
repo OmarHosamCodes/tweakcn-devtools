@@ -1,7 +1,9 @@
 import { createElement, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { installLivePreviewBridge } from "./live-preview-bridge";
 import { TweakcnDevtoolsPanel } from "./panel";
+import { isPreviewFrame } from "./preview-frame";
 import type { TweakcnDevtoolsOptions } from "./types";
 
 export type { CommunityPage, ThemeCatalogEntry, ThemeMode, ThemeStyles, TweakcnDevtoolsOptions } from "./types";
@@ -23,14 +25,22 @@ function ensureShadowMount(host: HTMLElement): HTMLElement {
 }
 
 export function TweakcnDevtools(options: TweakcnDevtoolsOptions = {}) {
+  const previewFrame = isPreviewFrame();
   const hostRef = useRef<HTMLDivElement>(null);
   const [mount, setMount] = useState<HTMLElement | null>(null);
 
   useLayoutEffect(() => {
+    installLivePreviewBridge();
+  }, []);
+
+  useLayoutEffect(() => {
+    if (previewFrame) return;
     const host = hostRef.current;
     if (!host) return;
     setMount(ensureShadowMount(host));
-  }, []);
+  }, [previewFrame]);
+
+  if (previewFrame) return null;
 
   return (
     <div ref={hostRef} id={HOST_ID}>
@@ -41,6 +51,8 @@ export function TweakcnDevtools(options: TweakcnDevtoolsOptions = {}) {
 
 export function initTweakcnDevtools(options: TweakcnDevtoolsOptions = {}) {
   if (typeof document === "undefined") return () => undefined;
+  installLivePreviewBridge();
+  if (isPreviewFrame()) return () => undefined;
   if (mounted || document.getElementById(HOST_ID)) {
     return destroyTweakcnDevtools;
   }
