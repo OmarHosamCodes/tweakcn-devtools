@@ -65,6 +65,8 @@ if (import.meta.env.DEV) {
 
 Open the dock, pick **Presets** or **Community**, and click a theme. **Restore original theme** puts your page back the way it was before the first apply.
 
+**Extend** opens the real [tweakcn](https://tweakcn.com) editor. Its controls stay on the side. The preview section is this page itself, fitted into that area, not a second copy loaded from a URL. Change a color in tweakcn and this page updates. **Dock** returns to the bottom sheet and lets the page use the full window again.
+
 ## Community themes in dev
 
 Browsers cannot call tweakcn’s server actions from your localhost origin. The Vite plugin exposes `POST /__tweakcn/community` and forwards to tweakcn on the server.

@@ -69,35 +69,17 @@ export const panelStyles = `:host {
   z-index: var(--td-z);
   display: flex;
   flex-direction: column;
-  height: min(42vh, 380px);
-  min-height: 280px;
+  height: min(52vh, 480px);
+  min-height: 360px;
   background: var(--td-bg);
   border-top: 1px solid var(--td-line);
   box-shadow: 0 -18px 40px rgb(0 0 0 / 0.28);
 }
 
-.td-bar {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--td-line);
-  min-height: 44px;
-}
-
-.td-title {
-  margin: 0;
-  padding: 0 4px 0 6px;
-  font-size: 13px;
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
 .td-search-wrap {
   flex: 1 1 180px;
-  min-width: 140px;
-  max-width: 320px;
+  min-width: 180px;
+  max-width: 420px;
 }
 
 .td-search-label {
@@ -162,10 +144,10 @@ export const panelStyles = `:host {
   flex: 1;
   overflow: auto;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 12px;
   align-content: start;
-  padding: 10px;
+  padding: 16px;
 }
 
 .td-card,
@@ -173,7 +155,7 @@ export const panelStyles = `:host {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  min-height: 102px;
+  min-height: 128px;
   overflow: hidden;
   border: 1px solid var(--td-line);
   border-radius: 10px;
@@ -186,16 +168,18 @@ export const panelStyles = `:host {
 
 .td-card[data-active="true"] {
   border-color: var(--td-text);
+  background: #27272a;
+  box-shadow: inset 4px 0 0 var(--td-fill), 0 8px 18px rgb(0 0 0 / 0.24);
+  transform: translateY(-1px);
 }
 
 .td-preview {
-  height: 56px;
-  padding: 8px;
+  height: 78px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
   gap: 6px;
-  border-bottom: 1px solid var(--td-line);
 }
 
 .td-chip {
@@ -214,8 +198,7 @@ export const panelStyles = `:host {
 }
 
 .td-meta {
-  padding: 7px 8px 8px;
-  border-top: 1px solid var(--td-line);
+  padding: 10px 11px 11px;
 }
 
 .td-name {
@@ -257,7 +240,8 @@ export const panelStyles = `:host {
   .td-tab,
   .td-toggle,
   .td-card {
-    transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+    transition: background-color 160ms ease, border-color 160ms ease, box-shadow 160ms ease,
+      color 160ms ease, transform 160ms ease;
   }
   .td-skeleton .td-preview,
   .td-skeleton .td-meta {
@@ -271,28 +255,103 @@ export const panelStyles = `:host {
 }
 
 .td-foot {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 36px;
-  padding: 6px 10px;
+  display: grid;
+  gap: 7px;
+  padding: 9px 12px 8px;
   border-top: 1px solid var(--td-line);
   color: var(--td-muted);
   font-size: 11px;
 }
 
+.td-foot-controls {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.td-foot-discovery,
+.td-foot-actions,
+.td-foot-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.td-foot-discovery {
+  min-width: 0;
+}
+
+.td-foot-actions {
+  justify-content: flex-end;
+}
+
+.td-foot-status {
+  justify-content: space-between;
+  min-height: 18px;
+}
+
+.td-foot-status .td-btn {
+  padding: 0 8px;
+  font-size: 11px;
+}
+
+.td-extended {
+  position: fixed;
+  inset: 0;
+  z-index: var(--td-z);
+  pointer-events: none;
+}
+
+.td-editor {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  pointer-events: auto;
+}
+
+.td-editor-actions {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: calc(var(--td-z) + 1);
+  display: flex;
+  gap: 4px;
+  pointer-events: auto;
+}
+
+.td-editor-actions .td-btn {
+  background: var(--td-bg);
+  border-color: var(--td-line);
+  color: var(--td-text);
+}
+
 @media (max-width: 720px) {
   .td-dock {
-    height: min(55vh, 420px);
+    height: min(68vh, 560px);
+    min-height: 420px;
   }
-  .td-bar {
+  .td-list {
+    grid-template-columns: repeat(auto-fill, minmax(152px, 1fr));
+    padding: 12px;
+  }
+  .td-foot-controls {
+    grid-template-columns: 1fr;
+    gap: 7px;
+  }
+  .td-foot-discovery,
+  .td-foot-actions {
     flex-wrap: wrap;
   }
-  .td-search-wrap {
-    flex: 1 1 100%;
+  .td-foot-actions {
+    justify-content: space-between;
+  }
+  .td-foot-discovery .td-search-wrap {
+    flex: 1 1 180px;
     max-width: none;
-    order: 5;
   }
   .td-toggle {
     width: 44px;

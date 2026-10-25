@@ -29,4 +29,9 @@ export interface TweakcnDevtoolsOptions {
   communityUrl?: string;
   disableCommunity?: boolean;
   zIndex?: number;
+  /**
+   * Editor document loaded by Extend.
+   * Defaults to the Vite plugin's same-origin proxy of the tweakcn editor.
+   */
+  editorUrl?: string;
 }
