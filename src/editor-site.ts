@@ -165,12 +165,12 @@ export function clearEditorSite() {
   document.getElementById(FRAME_ID)?.remove();
 }
 
-function rectPath(rect: DOMRect): string {
+function rectSubpath(rect: DOMRect): string {
   const x1 = Math.round(rect.left);
   const y1 = Math.round(rect.top);
   const x2 = Math.round(rect.right);
   const y2 = Math.round(rect.bottom);
-  return `${x1}px ${y1}px, ${x2}px ${y1}px, ${x2}px ${y2}px, ${x1}px ${y2}px, ${x1}px ${y1}px`;
+  return `M${x1} ${y1}H${x2}V${y2}H${x1}Z`;
 }
 
 function intersection(a: DOMRect, b: DOMRect): DOMRect | null {
@@ -201,12 +201,10 @@ function overlayRects(doc: Document, hole: DOMRect): DOMRect[] {
 function clipEditor(frame: HTMLIFrameElement, hole: DOMRect, overlays: DOMRect[]) {
   const width = frame.clientWidth;
   const height = frame.clientHeight;
-  const parts = [
-    `0px 0px, ${width}px 0px, ${width}px ${height}px, 0px ${height}px, 0px 0px`,
-    rectPath(hole),
-    ...overlays.map(rectPath),
-  ];
-  frame.style.clipPath = `polygon(evenodd, ${parts.join(", ")})`;
+  // Separate subpaths. One polygon joins each cutout back to the origin and
+  // paints a wedge from the top-left corner across the editor.
+  const d = [`M0 0H${width}V${height}H0Z`, rectSubpath(hole), ...overlays.map(rectSubpath)].join("");
+  frame.style.clipPath = `path(evenodd, "${d}")`;
 }
 
 const SOCIAL_HREFS = ["github.com/jnsahaj/tweakcn", "discord.gg/", "x.com/iamsahaj"];
